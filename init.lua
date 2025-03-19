@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.mouse = 'a'
@@ -159,6 +159,13 @@ vim.opt.scrolloff = 10
 
 -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.hlsearch = true
+
+vim.opt.shell = '"C:/Program Files/PowerShell/7/pwsh.exe"'
+vim.opt.shellcmdflag = '-command'
+vim.opt.shellquote = '"'
+vim.opt.shellxquote = ''
+vim.opt.colorcolumn = '120'
+vim.opt.ruler = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
@@ -280,19 +287,17 @@ require('lazy').setup({
       require('which-key').setup()
 
       -- Document existing key chains
-      require('which-key').register {
-        ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-        ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-        ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-        ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-        ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-        ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-        ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
+      require('which-key').add {
+        {
+          { '<leader>c', group = '[C]ode' },
+          { '<leader>d', group = '[D]ocument' },
+          { '<leader>r', group = '[R]ename' },
+          { '<leader>s', group = '[S]earch' },
+          { '<leader>w', group = '[W]orkspace' },
+          { '<leader>t', group = '[T]oggle' },
+          { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+        },
       }
-      -- visual mode
-      require('which-key').register({
-        ['<leader>h'] = { 'Git [H]unk' },
-      }, { mode = 'v' })
     end,
   },
 
@@ -359,6 +364,10 @@ require('lazy').setup({
         --   },
         -- },
         -- pickers = {}
+        defaults = {
+          color_devicons = true,
+          path_display = { 'smart' },
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -469,14 +478,17 @@ require('lazy').setup({
           -- Jump to the definition of the word under your cursor.
           --  This is where a variable was first declared, or where a function is defined, etc.
           --  To jump back, press <C-t>.
-          map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+          map('gd', require('omnisharp_extended').telescope_lsp_definition, '[G]oto [D]efinition')
+          -- map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
 
           -- Find references for the word under your cursor.
-          map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+          map('gr', require('omnisharp_extended').telescope_lsp_references, '[G]oto [R]eferences')
+          -- map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
 
           -- Jump to the implementation of the word under your cursor.
           --  Useful when your language has ways of declaring types without an actual implementation.
-          map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+          -- map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
+          map('gI', require('omnisharp_extended').telescope_lsp_implementation, '[G]oto [I]mplementation')
 
           -- Jump to the type of the word under your cursor.
           --  Useful when you're not sure what type a variable is and you want to see
@@ -652,12 +664,16 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        markdown = { 'prettier' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
         -- javascript = { { "prettierd", "prettier" } },
+      },
+      formatter = {
+        prettier = {},
       },
     },
   },
@@ -697,6 +713,7 @@ require('lazy').setup({
       --  into multiple repos for maintenance purposes.
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-path',
+      'hrsh7th/cmp-nvim-lsp-signature-help',
     },
     config = function()
       -- See `:help cmp`
@@ -716,6 +733,12 @@ require('lazy').setup({
         -- chosen, you will need to read `:help ins-completion`
         --
         -- No, but seriously. Please read `:help ins-completion`, it is really good!
+        sources = {
+          { name = 'nvim_lsp' },
+          { name = 'luasnip' },
+          { name = 'path' },
+          { name = 'nvim_lsp_signature_help' },
+        },
         mapping = cmp.mapping.preset.insert {
           -- Select the [n]ext item
           ['<C-n>'] = cmp.mapping.select_next_item(),
@@ -747,7 +770,6 @@ require('lazy').setup({
           --  function $name($args)
           --    $body
           --  end
-          --
           -- <c-l> will move you to the right of each of the expansion locations.
           -- <c-h> is similar, except moving you backwards.
           ['<C-l>'] = cmp.mapping(function()
@@ -763,11 +785,6 @@ require('lazy').setup({
 
           -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
           --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
-        },
-        sources = {
-          { name = 'nvim_lsp' },
-          { name = 'luasnip' },
-          { name = 'path' },
         },
       }
     end,
@@ -863,7 +880,217 @@ require('lazy').setup({
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
     end,
   },
+  {
+    'stevearc/oil.nvim',
+    opts = {},
+    -- Optional dependencies
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+  },
+  -- {
+  --   'github/copilot.vim',
+  -- },
+  {
+    'yetone/avante.nvim',
+    event = 'VeryLazy',
+    lazy = false,
+    version = false, -- set this if you want to always pull the latest change
+    opts = {
+      provider = 'deepseek',
+      auto_suggestions_provider = 'deepseek',
+      vendors = {
+        deepseek = {
+          __inherited_from = 'openai',
+          api_key_name = 'DEEPSEEK_API_KEY',
+          endpoint = 'https://api.deepseek.com',
+          model = 'deepseek-chat',
+        },
+      },
+      behaviour = {
+        auto_suggestions = true,
+      },
+    },
+    -- opts = {
+    --   provider = 'copilot', -- Recommend using Claude
+    --   auto_suggestions_provider = 'copilot',
+    --   copilot = {
+    --     -- model = 'claude-3.5-sonnet',
+    --   },
+    --   -- add any opts here
+    --   behaviour = {
+    --     auto_suggestions = true,
+    --   },
+    -- },
+    -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
+    build = 'powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false',
+    -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      'stevearc/dressing.nvim',
+      'nvim-lua/plenary.nvim',
+      'MunifTanjim/nui.nvim',
+      --- The below dependencies are optional,
+      'nvim-tree/nvim-web-devicons', -- or echasnovski/mini.icons
+      'zbirenbaum/copilot.lua', -- for providers='copilot'
+      {
+        -- support for image pasting
+        'HakonHarnes/img-clip.nvim',
+        event = 'VeryLazy',
+        opts = {
+          -- recommended settings
+          default = {
+            embed_image_as_base64 = false,
+            prompt_for_file_name = false,
+            drag_and_drop = {
+              insert_mode = true,
+            },
+            -- required for Windows users
+            use_absolute_path = true,
+          },
+        },
+      },
+      {
+        -- Make sure to set this up properly if you have lazy=true
+        'MeanderingProgrammer/render-markdown.nvim',
+        opts = {
+          file_types = { 'markdown', 'Avante' },
+        },
+        ft = { 'markdown', 'Avante' },
+      },
+    },
+  },
+  {
+    'tpope/vim-fugitive',
+    cmd = { 'G', 'Git' },
+    -- Optional: if you want to load the plugin only when entering a Git repository
+    -- cond = function()
+    --   return vim.fn.isdirectory(".git") == 1
+    -- end,
+  },
+  {
+    'mfussenegger/nvim-dap',
+    config = function()
+      local dap = require 'dap'
+      dap.configurations.cs = {
+        {
+          name = 'Try vsdbg',
+          type = 'clr',
+          request = 'launch',
+          program = function()
+            return vim.fn.input('Path: ', vim.fn.getcwd() .. '\\src\\Fastec.EntityData.Service\\bin\\Debug\\net8.0\\Fastec.EntityData.Service.exe', 'file')
+          end,
+          args = '',
+          cwd = vim.fn.getcwd() .. '\\src\\Fastec.EntityData.Service\\',
+          clientID = 'vscode',
+          clientName = 'Visual Studio Code',
+          -- externalTerminal = true,
+          columnsStartAt1 = true,
+          linesStartAt1 = true,
+          locale = 'en',
+          pathFormat = 'path',
+          externalConsole = true,
+          -- console = "externalTerminal"
+        },
+      }
+      -- Set key mappings for debugging
+      vim.fn.sign_define('DapBreakpoint', { text = '🔴', texthl = '', linehl = '', numhl = '' })
+      vim.fn.sign_define('DapStopped', { text = '⭐️', texthl = '', linehl = 'debugPC', numhl = '' })
 
+      -- Mappings
+      vim.api.nvim_set_keymap('n', '<F5>', ":lua require'dap'.continue()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<F10>', ":lua require'dap'.step_over()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<F11>', ":lua require'dap'.step_into()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<F12>', ":lua require'dap'.step_out()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<Leader>b', ":lua require'dap'.toggle_breakpoint()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap(
+        'n',
+        '<Leader>B',
+        ':lua require\'dap\'.set_breakpoint(vim.fn.input("Breakpoint condition: "))<CR>',
+        { noremap = true, silent = true }
+      )
+      vim.api.nvim_set_keymap(
+        'n',
+        '<Leader>lp',
+        ':lua require\'dap\'.set_breakpoint(nil, nil, vim.fn.input("Log point message: "))<CR>',
+        { noremap = true, silent = true }
+      )
+      vim.api.nvim_set_keymap('n', '<Leader>dr', ":lua require'dap'.repl.open()<CR>", { noremap = true, silent = true })
+      vim.api.nvim_set_keymap('n', '<Leader>dl', ":lua require'dap'.run_last()<CR>", { noremap = true, silent = true })
+    end,
+  },
+  {
+    'theHamsta/nvim-dap-virtual-text',
+  },
+  {
+    'nvim-telescope/telescope-dap.nvim',
+  },
+  { 'nvim-neotest/nvim-nio' },
+  {
+    'rcarriga/nvim-dap-ui',
+    requires = { 'mfussenegger/nvim-dap' },
+    config = function()
+      local dapui = require 'dapui'
+      dapui.setup()
+
+      -- Open and close dap-ui automatically
+      local dap = require 'dap'
+      dap.listeners.after.event_initialized['dapui_config'] = function()
+        dapui.open()
+      end
+      dap.listeners.before.event_terminated['dapui_config'] = function()
+        dapui.close()
+      end
+      dap.listeners.before.event_exited['dapui_config'] = function()
+        dapui.close()
+      end
+    end,
+  },
+  {
+    'Hoffs/omnisharp-extended-lsp.nvim',
+  },
+  {
+    'MeanderingProgrammer/render-markdown.nvim',
+    opts = {},
+    dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' }, -- if you use the mini.nvim suite
+    -- dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.icons' }, -- if you use standalone mini plugins
+    -- dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' }, -- if you prefer nvim-web-devicons
+  },
+  {
+    'kevinhwang91/nvim-bqf',
+  },
+  {
+    'epwalsh/obsidian.nvim',
+    version = '*', -- recommended, use latest release instead of latest commit
+    lazy = true,
+    ft = 'markdown',
+    -- Replace the above line with this if you only want to load obsidian.nvim for markdown files in your vault:
+    -- event = {
+    --   -- If you want to use the home shortcut '~' here you need to call 'vim.fn.expand'.
+    --   -- E.g. "BufReadPre " .. vim.fn.expand "~" .. "/my-vault/*.md"
+    --   -- refer to `:h file-pattern` for more examples
+    --   "BufReadPre path/to/my-vault/*.md",
+    --   "BufNewFile path/to/my-vault/*.md",
+    -- },
+    dependencies = {
+      -- Required.
+      'nvim-lua/plenary.nvim',
+
+      -- see below for full list of optional dependencies 👇
+    },
+    opts = {
+      workspaces = {
+        {
+          name = 'personal',
+          path = '~/vaults/personal',
+        },
+        {
+          name = 'work',
+          path = '/Data/MyVault/',
+        },
+      },
+
+      -- see below for full list of options 👇
+    },
+  },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
@@ -907,6 +1134,86 @@ require('lazy').setup({
     },
   },
 })
-
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+require('nvim-treesitter.install').compilers = { 'zig', 'clang' }
+local log = require('dap.log').create_logger 'dap.log'
+require('oil').setup()
+local utils = require 'dap.utils'
+
+local rpc = require 'dap.rpc'
+
+local function send_payload(client, payload)
+  local msg = rpc.msg_with_content_length(vim.json.encode(payload))
+  client.write(msg)
+end
+
+function RunHandshake(self, request_payload)
+  log.debug('running handshake for ', request_payload)
+  local signResult = io.popen('node C:\\fastec\\development\\signer\\signer.js ' .. request_payload.arguments.value)
+  log.debug('signed result', signResult)
+  if signResult == nil then
+    log.error 'error while signing handshake'
+    utils.notify('error while signing handshake', vim.log.levels.ERROR)
+    return
+  end
+  local signature = signResult:read '*a'
+  signature = string.gsub(signature, '\n', '')
+  local response = {
+    type = 'response',
+    seq = 0,
+    command = 'handshake',
+    request_seq = request_payload.seq,
+    success = true,
+    body = {
+      signature = signature,
+    },
+  }
+  log.debug('sending handshake response', response)
+  send_payload(self.client, response)
+end
+
+local dap = require 'dap'
+dap.set_log_level 'TRACE'
+dap.adapters.clr = {
+  id = 'coreclr',
+  type = 'executable',
+  command = 'C:\\utils\\vsdbg\\vsdbg-ui.exe',
+  options = {
+    externalTerminal = true,
+    -- logging = {
+    --   moduleLoad = false,
+    --   trace = true
+    -- }
+  },
+  runInTerminal = true,
+  reverse_request_handlers = {
+
+    handshake = RunHandshake,
+  },
+}
+require('lspconfig').omnisharp.setup {
+  capabilities = require('cmp_nvim_lsp').default_capabilities(),
+  settings = {
+    RoslynExtensionsOptions = {
+      -- EnableAnalyzersSupport = true,
+      EnableDecompilationSupport = true,
+    },
+    FormattingOptions = {
+      EnableEditorConfigSupport = true,
+    },
+  },
+}
+require('lspconfig').ltex.setup {
+  settings = {
+    ltex = {
+      language = 'de',
+      languageToolHttpServerUri = 'http://localhost:8010/',
+    },
+  },
+}
+
+vim.o.shellquote = ''
+vim.cmd 'compile! dotnet'
+-- require('copilot').setup()
+vim.o.conceallevel = 2
